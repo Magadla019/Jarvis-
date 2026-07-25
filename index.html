@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" content="#05070A">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Jarvis">
@@ -14,7 +14,7 @@
 <style>
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body {
-  margin: 0; height: 100%; background: #000; color: #fff;
+  margin: 0; height: 100%; background: #05070A; color: #fff;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   overflow: hidden;
 }
@@ -27,7 +27,7 @@ html, body {
 }
 .card { max-width: 420px; width: 100%; text-align: center; }
 .card h1 {
-  color: #1E90FF; letter-spacing: 4px; font-weight: 300; font-size: 2.2rem;
+  color: #00A8FF; letter-spacing: 4px; font-weight: 300; font-size: 2.2rem;
   margin-bottom: 4px;
 }
 .card p { color: #B0B0B0; line-height: 1.5; font-size: 0.9rem; }
@@ -42,10 +42,10 @@ html, body {
   width: 100%; background: #111; border: 1px solid #333; color: #fff;
   padding: 12px 14px; border-radius: 10px; font-size: 0.95rem;
 }
-.field input:focus { outline: none; border-color: #1E90FF; }
+.field input:focus { outline: none; border-color: #00A8FF; }
 .field small { color: #666; display: block; margin-top: 4px; font-size: 0.72rem; }
 #enableBtn {
-  background: #1E90FF; color: #000; border: none; padding: 14px 32px;
+  background: #00A8FF; color: #000; border: none; padding: 14px 32px;
   border-radius: 999px; font-size: 1rem; font-weight: 600; cursor: pointer;
   width: 100%; margin-top: 8px;
 }
@@ -63,7 +63,7 @@ main#stage {
   justify-content: center; gap: 20px; position: relative; padding: 24px;
 }
 .state-label {
-  color: #1E90FF; letter-spacing: 3px; text-transform: uppercase;
+  color: #00A8FF; letter-spacing: 3px; text-transform: uppercase;
   font-size: 0.72rem; opacity: 0.85;
 }
 .transcript { color: #B0B0B0; font-size: 0.95rem; min-height: 1.4em; text-align: center; }
@@ -75,8 +75,8 @@ main#stage {
 .debug { color: #333; font-size: 0.68rem; font-family: monospace; min-height: 1.2em; }
 .info-card {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
-  padding: 16px 28px; border: 1px solid #1E90FF44; border-radius: 16px;
-  background: rgba(30,144,255,0.06);
+  padding: 16px 28px; border: 1px solid #00A8FF44; border-radius: 16px;
+  background: rgba(0,168,255,0.06);
 }
 .info-card .flag { font-size: 2.4rem; line-height: 1; }
 .info-card .info-time {
@@ -84,22 +84,22 @@ main#stage {
   color: #fff; letter-spacing: 2px; margin-top: 4px;
 }
 .info-card .info-label {
-  color: #1E90FF; font-size: 0.68rem; letter-spacing: 1.5px; text-transform: uppercase;
+  color: #00A8FF; font-size: 0.68rem; letter-spacing: 1.5px; text-transform: uppercase;
 }
 .orb { width: 160px; height: 160px; position: relative; display: flex;
   align-items: center; justify-content: center; transition: width .4s, height .4s;
   cursor: pointer; }
 .orb-core {
   width: 68%; height: 68%; border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #7EC8FF, #1E90FF 55%, #0B4C99 100%);
-  box-shadow: 0 0 40px 10px rgba(30,144,255,.35);
+  background: radial-gradient(circle at 35% 30%, #4DDFFF, #00A8FF 55%, #004C8C 100%);
+  box-shadow: 0 0 40px 10px rgba(0,168,255,.35);
   transition: box-shadow .4s, background .4s, transform .3s;
   z-index: 3;
 }
 /* Segmented tick ring — always slowly rotating, like a HUD dial */
 .hud-ticks {
   position: absolute; inset: -8px; border-radius: 50%;
-  background: repeating-conic-gradient(from 0deg, rgba(30,144,255,.55) 0deg 2deg, transparent 2deg 12deg);
+  background: repeating-conic-gradient(from 0deg, rgba(0,168,255,.55) 0deg 2deg, transparent 2deg 12deg);
   -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 5px));
   mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 5px));
   animation: spin 24s linear infinite;
@@ -108,35 +108,35 @@ main#stage {
 /* Outer dashed ring */
 .hud-ring-outer {
   position: absolute; inset: -20px; border-radius: 50%;
-  border: 1px dashed rgba(30,144,255,.45);
+  border: 1px dashed rgba(0,168,255,.45);
   animation: spin 14s linear infinite;
 }
 /* Inner accent ring — brighter, rotates opposite direction */
 .hud-ring-mid {
   position: absolute; inset: -2px; border-radius: 50%;
   border: 2px solid transparent;
-  border-top-color: rgba(126,200,255,.85);
-  border-left-color: rgba(30,144,255,.35);
+  border-top-color: rgba(77,223,255,.85);
+  border-left-color: rgba(0,168,255,.35);
   animation: spin 3.5s linear infinite reverse;
   z-index: 2;
 }
 /* Sweeping scan wedge — the "pulling info" effect, only visible when active */
 .hud-scan {
   position: absolute; inset: -20px; border-radius: 50%;
-  background: conic-gradient(from 0deg, transparent 0deg, rgba(126,200,255,.55) 12deg, transparent 32deg);
+  background: conic-gradient(from 0deg, transparent 0deg, rgba(77,223,255,.55) 12deg, transparent 32deg);
   opacity: 0;
   animation: spin 1.6s linear infinite;
   transition: opacity .3s;
 }
 .orb.idle .orb-core { animation: idlePulse 3s ease-in-out infinite; }
 @keyframes idlePulse {
-  0%,100% { box-shadow: 0 0 30px 6px rgba(30,144,255,.25); }
-  50% { box-shadow: 0 0 46px 12px rgba(30,144,255,.45); }
+  0%,100% { box-shadow: 0 0 30px 6px rgba(0,168,255,.25); }
+  50% { box-shadow: 0 0 46px 12px rgba(0,168,255,.45); }
 }
 .orb.listening { width: 180px; height: 180px; }
 .orb.listening .orb-core {
-  background: radial-gradient(circle at 35% 30%, #fff, #1E90FF 60%, #0B4C99 100%);
-  box-shadow: 0 30px 60px 0 rgba(255,255,255,.35), 0 0 40px 10px rgba(30,144,255,.4);
+  background: radial-gradient(circle at 35% 30%, #fff, #00A8FF 60%, #004C8C 100%);
+  box-shadow: 0 30px 60px 0 rgba(255,255,255,.35), 0 0 40px 10px rgba(0,168,255,.4);
 }
 .orb.listening .hud-ring-mid { animation-duration: 2s; }
 .orb.thinking .hud-scan { opacity: 1; animation-duration: 1s; }
@@ -147,8 +147,8 @@ main#stage {
 .orb.speaking .hud-ring-mid { animation-duration: .7s; }
 .orb.speaking .orb-core { animation: speakPulse .5s ease-in-out infinite; }
 @keyframes speakPulse {
-  0%,100% { transform: scale(1); box-shadow: 0 0 40px 10px rgba(30,144,255,.4); }
-  50% { transform: scale(1.06); box-shadow: 0 0 60px 18px rgba(30,144,255,.6); }
+  0%,100% { transform: scale(1); box-shadow: 0 0 40px 10px rgba(0,168,255,.4); }
+  50% { transform: scale(1.06); box-shadow: 0 0 60px 18px rgba(0,168,255,.6); }
 }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .orb.offline .orb-core {
@@ -158,10 +158,10 @@ main#stage {
 .orb.offline .hud-ticks, .orb.offline .hud-ring-outer, .orb.offline .hud-ring-mid { opacity: .15; animation-play-state: paused; }
 .ptt {
   position: absolute; bottom: 30px; width: 56px; height: 56px; border-radius: 50%;
-  border: 1px solid #1E90FF; background: transparent; color: #1E90FF;
+  border: 1px solid #00A8FF; background: transparent; color: #00A8FF;
   font-size: 1.4rem; cursor: pointer;
 }
-.ptt:active { background: rgba(30,144,255,.15); }
+.ptt:active { background: rgba(0,168,255,.15); }
 .settingsLink {
   position: absolute; top: 16px; right: 16px; font-size: 0.72rem; color: #555;
   cursor: pointer; text-decoration: underline;
