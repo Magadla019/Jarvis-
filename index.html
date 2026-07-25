@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Jarvis</title>
+<style>
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  margin: 0; height: 100%; background: #000; color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow: hidden;
+}
+.hidden { display: none !important; }
+
+/* ---------- Setup screen ---------- */
+.screen {
+  height: 100%; display: flex; align-items: center; justify-content: center;
+  padding: 24px; overflow-y: auto;
+}
+.card { max-width: 420px; width: 100%; text-align: center; }
+.card h1 {
+  color: #1E90FF; letter-spacing: 4px; font-weight: 300; font-size: 2.2rem;
+  margin-bottom: 4px;
+}
+.card p { color: #B0B0B0; line-height: 1.5; font-size: 0.9rem; }
+.field {
+  text-align: left; margin: 16px 0;
+}
+.field label {
+  display: block; font-size: 0.75rem; color: #888; letter-spacing: 1px;
+  text-transform: uppercase; margin-bottom: 6px;
+}
+.field input {
+  width: 100%; background: #111; border: 1px solid #333; color: #fff;
+  padding: 12px 14px; border-radius: 10px; font-size: 0.95rem;
+}
+.field input:focus { outline: none; border-color: #1E90FF; }
+.field small { color: #666; display: block; margin-top: 4px; font-size: 0.72rem; }
+#enableBtn {
+  background: #1E90FF; color: #000; border: none; padding: 14px 32px;
+  border-radius: 999px; font-size: 1rem; font-weight: 600; cursor: pointer;
+  width: 100%; margin-top: 8px;
+}
+#enableBtn:active { transform: scale(0.98); }
+.gate-note { font-size: 0.75rem; color: #555; margin-top: 14px; }
+.error-box {
+  background: #2a0f0f; border: 1px solid #5a1f1f; color: #ff8a8a;
+  padding: 10px 14px; border-radius: 8px; font-size: 0.82rem; margin-top: 12px;
+  text-align: left;
+}
+
+/* ---------- Main stage ---------- */
+main#stage {
+  height: 100%; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 20px; position: relative; padding: 24px;
+}
+.state-label {
+  color: #1E90FF; letter-spacing: 3px; text-transform: uppercase;
+  font-size: 0.72rem; opacity: 0.85;
+}
+.transcript { color: #B0B0B0; font-size: 0.95rem; min-height: 1.4em; text-align: center; }
+.reply {
+  color: #fff; font-size: 1.05rem; text-align: center; max-width: 480px;
+  min-height: 1.4em; line-height: 1.5;
+}
+.hint { color: #555; font-size: 0.72rem; letter-spacing: 0.5px; }
+.orb { width: 140px; height: 140px; position: relative; display: flex;
+  align-items: center; justify-content: center; transition: width .4s, height .4s;
+  cursor: pointer; }
+.orb-core {
+  width: 100%; height: 100%; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #7EC8FF, #1E90FF 55%, #0B4C99 100%);
+  box-shadow: 0 0 40px 10px rgba(30,144,255,.35);
+  transition: box-shadow .4s, background .4s, transform .3s;
+}
+.orb-ring { position: absolute; inset: -14px; border-radius: 50%; border: 2px solid transparent; opacity: 0; }
+.orb-particles { position: absolute; inset: -24px; border-radius: 50%; opacity: 0; }
+.orb.idle .orb-core { animation: idlePulse 3s ease-in-out infinite; }
+@keyframes idlePulse {
+  0%,100% { box-shadow: 0 0 30px 6px rgba(30,144,255,.25); }
+  50% { box-shadow: 0 0 46px 12px rgba(30,144,255,.45); }
+}
+.orb.listening { width: 170px; height: 170px; }
+.orb.listening .orb-core {
+  background: radial-gradient(circle at 35% 30%, #fff, #1E90FF 60%, #0B4C99 100%);
+  box-shadow: 0 30px 60px 0 rgba(255,255,255,.35), 0 0 40px 10px rgba(30,144,255,.4);
+}
+.orb.thinking .orb-ring {
+  opacity: 1; border-top-color: #1E90FF; border-right-color: rgba(30,144,255,.3);
+  animation: spin 1.1s linear infinite;
+}
+.orb.thinking .orb-particles {
+  opacity: 1;
+  background: radial-gradient(2px 2px at 10% 50%, #C0C0C0, transparent),
+              radial-gradient(2px 2px at 90% 30%, #1E90FF, transparent),
+              radial-gradient(2px 2px at 50% 90%, #fff, transparent);
+  animation: spin 2.4s linear infinite reverse;
+}
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.orb.speaking .orb-core { animation: speakPulse .5s ease-in-out infinite; }
+@keyframes speakPulse {
+  0%,100% { transform: scale(1); box-shadow: 0 0 40px 10px rgba(30,144,255,.4); }
+  50% { transform: scale(1.06); box-shadow: 0 0 60px 18px rgba(30,144,255,.6); }
+}
+.orb.offline .orb-core {
+  background: radial-gradient(circle at 35% 30%, #999, #555 60%, #222 100%);
+  box-shadow: none; animation: none;
+}
+.ptt {
+  position: absolute; bottom: 30px; width: 56px; height: 56px; border-radius: 50%;
+  border: 1px solid #1E90FF; background: transparent; color: #1E90FF;
+  font-size: 1.4rem; cursor: pointer;
+}
+.ptt:active { background: rgba(30,144,255,.15); }
+.settingsLink {
+  position: absolute; top: 16px; right: 16px; font-size: 0.72rem; color: #555;
+  cursor: pointer; text-decoration: underline;
+}
+</style>
+</head>
+<body>
+
+  <div id="setupScreen" class="screen">
+    <div class="card">
+      <h1>Jarvis</h1>
+      <p>Tap the glowing orb and speak, tap again to send. Runs entirely in this
+         browser tab — your keys stay on your device, sent only to Google and
+         ElevenLabs directly.</p>
+
+      <div class="field">
+        <label>Gemini API Key (required)</label>
+        <input type="password" id="geminiKey" placeholder="AIza...">
+        <small>From Google AI Studio. Needed for Jarvis to think.</small>
+      </div>
+
+      <div class="field">
+        <label>ElevenLabs API Key (optional)</label>
+        <input type="password" id="elevenKey" placeholder="sk_...">
+        <small>Needed for Jarvis's real voice. Without it, your browser's built-in voice speaks instead.</small>
+      </div>
+
+      <button id="enableBtn">Enable Jarvis</button>
+      <div id="errorBox" class="error-box hidden"></div>
+      <p class="gate-note">Chrome or Edge recommended.</p>
+    </div>
+  </div>
+
+  <main id="stage" class="hidden">
+    <div class="settingsLink" id="settingsLink">change keys</div>
+    <div id="orb" class="orb idle">
+      <div class="orb-core"></div>
+      <div class="orb-ring"></div>
+      <div class="orb-particles"></div>
+    </div>
+    <div id="stateLabel" class="state-label">Idle</div>
+    <div class="hint" id="hintLabel">Tap the orb to talk</div>
+    <div id="transcript" class="transcript"></div>
+    <div id="reply" class="reply"></div>
+    <button id="pushToTalk" class="ptt" title="Type instead">⌨</button>
+  </main>
+
+<script>
+const VOICE_ID = "ynUcJpglne1SRSNHFg1k";
+const GEMINI_MODEL = "gemini-3.5-flash";
+const SYSTEM_INSTRUCTION = "You are Jarvis, a professional, calm, confident, " +
+  "friendly, intelligent AI assistant. Keep spoken replies concise (1-3 sentences) " +
+  "since they will be read aloud. Always tell the truth and never pretend " +
+  "something is complete if it isn't.";
+
+const els = {
+  setup: document.getElementById("setupScreen"),
+  geminiKey: document.getElementById("geminiKey"),
+  elevenKey: document.getElementById("elevenKey"),
+  enableBtn: document.getElementById("enableBtn"),
+  errorBox: document.getElementById("errorBox"),
+  stage: document.getElementById("stage"),
+  orb: document.getElementById("orb"),
+  stateLabel: document.getElementById("stateLabel"),
+  transcript: document.getElementById("transcript"),
+  reply: document.getElementById("reply"),
+  ptt: document.getElementById("pushToTalk"),
+  settingsLink: document.getElementById("settingsLink"),
+  hint: document.getElementById("hintLabel"),
+};
+
+let geminiKey = "";
+let elevenKey = "";
+let history = []; // {role: "user"|"model", parts:[{text}]}
+
+function showError(msg) {
+  els.errorBox.textContent = msg;
+  els.errorBox.classList.remove("hidden");
+}
+
+function setState(state) {
+  els.orb.className = "orb " + state;
+  els.stateLabel.textContent = state.charAt(0).toUpperCase() + state.slice(1);
+}
+
+// ---------------- Load / save keys via persistent artifact storage ----------------
+
+async function loadSavedKeys() {
+  try {
+    const g = await window.storage.get("gemini_api_key", false);
+    if (g) els.geminiKey.value = g.value;
+  } catch (_) {}
+  try {
+    const e = await window.storage.get("elevenlabs_api_key", false);
+    if (e) els.elevenKey.value = e.value;
+  } catch (_) {}
+}
+
+async function saveKeys() {
+  try { await window.storage.set("gemini_api_key", geminiKey, false); } catch (_) {}
+  try { if (elevenKey) await window.storage.set("elevenlabs_api_key", elevenKey, false); } catch (_) {}
+}
+
+loadSavedKeys();
+
+// ---------------- Enable flow ----------------
+
+let micStream = null;
+
+els.enableBtn.addEventListener("click", async () => {
+  els.errorBox.classList.add("hidden");
+  geminiKey = els.geminiKey.value.trim();
+  elevenKey = els.elevenKey.value.trim();
+
+  if (!geminiKey) {
+    showError("A Gemini API key is required — get one free at aistudio.google.com/apikey");
+    return;
+  }
+
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (err) {
+    showError("Microphone access was denied or unavailable in this environment. " +
+      "You can still use the ⌨ button to type instead.");
+  }
+
+  await saveKeys();
+  els.setup.classList.add("hidden");
+  els.stage.classList.remove("hidden");
+
+  setupRecorder(); // synchronous now — reuses micStream, no second permission prompt
+  setState(recorderReady ? "idle" : "offline");
+  if (!recorderReady) {
+    els.transcript.textContent = "Mic unavailable — tap the orb or ⌨ to type instead.";
+  }
+});
+
+els.settingsLink.addEventListener("click", () => {
+  els.stage.classList.add("hidden");
+  els.setup.classList.remove("hidden");
+});
+
+// ---------------- Voice input: record audio, let Gemini listen directly ----------------
+// The browser's SpeechRecognition API is blocked in this environment
+// ("not-allowed" even with mic granted), so instead of transcribing
+// locally, we record raw audio and send it to Gemini, which can listen
+// to audio natively and respond — no browser STT needed at all.
+
+let mediaRecorder = null;
+let audioChunks = [];
+let recorderReady = false;
+
+function setupRecorder() {
+  try {
+    if (!micStream) throw new Error("No microphone stream available.");
+    mediaRecorder = new MediaRecorder(micStream);
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
+    recorderReady = true;
+  } catch (err) {
+    console.warn("Mic setup failed:", err);
+    recorderReady = false;
+  }
+}
+
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result.split(",")[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function toggleRecording() {
+  if (!recorderReady) {
+    const typed = prompt("Mic isn't available here — type your message to Jarvis:");
+    if (typed && typed.trim()) handleAudioOrText({ text: typed.trim() });
+    return;
+  }
+
+  if (mediaRecorder.state === "inactive") {
+    audioChunks = [];
+    els.transcript.textContent = "";
+    els.reply.textContent = "";
+    setState("listening");
+    els.hint.textContent = "Tap the orb again to send";
+    mediaRecorder.start();
+  } else if (mediaRecorder.state === "recording") {
+    mediaRecorder.stop();
+    setState("thinking");
+    els.hint.textContent = "";
+    mediaRecorder.onstop = async () => {
+      const blob = new Blob(audioChunks, { type: "audio/webm" });
+      const base64 = await blobToBase64(blob);
+      handleAudioOrText({ audioBase64: base64, mimeType: "audio/webm" });
+    };
+  }
+}
+
+els.orb.addEventListener("click", toggleRecording);
+
+// Fallback: type instead of talk
+els.ptt.addEventListener("click", () => {
+  const typed = prompt("Type your message to Jarvis:");
+  if (typed && typed.trim()) handleAudioOrText({ text: typed.trim() });
+});
+
+// ---------------- Brain: Gemini (accepts audio directly, or text fallback) ----------------
+
+async function handleAudioOrText(input) {
+  setState("thinking");
+
+  const userParts = input.audioBase64
+    ? [{ inline_data: { mime_type: input.mimeType, data: input.audioBase64 } }]
+    : [{ text: input.text }];
+
+  history.push({ role: "user", parts: userParts });
+  if (input.text) els.transcript.textContent = input.text;
+
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": geminiKey },
+      body: JSON.stringify({
+        contents: history,
+        systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+      }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Gemini error ${res.status}: ${errText.slice(0, 150)}`);
+    }
+
+    const data = await res.json();
+    const replyText = data?.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("") || "";
+    if (!replyText) throw new Error("Gemini returned an empty response.");
+
+    history.push({ role: "model", parts: [{ text: replyText }] });
+    els.reply.textContent = replyText;
+    await speak(replyText);
+  } catch (err) {
+    console.error(err);
+    els.reply.textContent = "Jarvis hit an error: " + err.message;
+    setState("offline");
+    setTimeout(() => setState("idle"), 2500);
+    return;
+  }
+  setState("idle");
+  els.hint.textContent = "Tap the orb to talk";
+}
+
+async function speak(text) {
+  setState("speaking");
+  if (elevenKey) {
+    try {
+      const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`, {
+        method: "POST",
+        headers: {
+          "xi-api-key": elevenKey,
+          "Content-Type": "application/json",
+          "Accept": "audio/mpeg",
+        },
+        body: JSON.stringify({
+          text,
+          model_id: "eleven_turbo_v2_5",
+          voice_settings: { stability: 0.5, similarity_boost: 0.75 },
+        }),
+      });
+      if (!res.ok) throw new Error(`ElevenLabs HTTP ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      await new Promise((resolve, reject) => {
+        audio.onended = resolve;
+        audio.onerror = reject;
+        audio.play().catch(reject);
+      });
+      return;
+    } catch (err) {
+      console.warn("ElevenLabs TTS failed, falling back to browser voice:", err);
+    }
+  }
+  await speakWithBrowserVoice(text);
+}
+
+function speakWithBrowserVoice(text) {
+  return new Promise((resolve) => {
+    if (!window.speechSynthesis) return resolve();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.onend = resolve;
+    utter.onerror = resolve;
+    window.speechSynthesis.speak(utter);
+  });
+}
+
+function playChime() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.2);
+  } catch (_) {}
+}
+</script>
+</body>
+  </html>
