@@ -12,8 +12,8 @@ const els = {
   setup: document.getElementById("setupScreen"),
   dashboard: document.getElementById("dashboard"),
   geminiKey: document.getElementById("geminiKey"),
-  elevenKey: document.getElementById("elevenKey"),
-  elevenVoiceId: document.getElementById("elevenVoiceId"),
+  fishKey: document.getElementById("fishKey"),
+  fishVoiceId: document.getElementById("fishVoiceId"),
   enableBtn: document.getElementById("enableBtn"),
   errorBox: document.getElementById("errorBox"),
   stateLabel: document.getElementById("stateLabel"),
@@ -49,8 +49,8 @@ function sanitizeKey(raw) {
 }
 
 let geminiKey = "";
-let elevenKey = "";
-let elevenVoiceId = "";
+let fishKey = "";
+let fishVoiceId = "";
 let history = [];
 let startTime = Date.now();
 
@@ -169,6 +169,34 @@ function generateIrisBlades() {
 }
 generateIrisBlades();
 
+// Generate the 8 white light blocks — evenly spaced glowing blocks
+function generatePowerBlocks() {
+  const count = 8;
+  const r = 170;
+  const blockLen = 22;
+  const blocks = document.getElementById("powerBlocks");
+  let svg = "";
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2 - Math.PI / 2; // start at top
+    const cx = 300 + Math.cos(angle) * r;
+    const cy = 300 + Math.sin(angle) * r;
+    // block rectangle oriented tangent to the circle
+    const tangentAngle = angle + Math.PI / 2;
+    const dx = Math.cos(tangentAngle) * (blockLen / 2);
+    const dy = Math.sin(tangentAngle) * (blockLen / 2);
+    const thickness = 7;
+    const nx = Math.cos(angle) * thickness;
+    const ny = Math.sin(angle) * thickness;
+    const x1 = cx - dx - nx / 2, y1 = cy - dy - ny / 2;
+    const x2 = cx + dx - nx / 2, y2 = cy + dy - ny / 2;
+    const x3 = cx + dx + nx / 2, y3 = cy + dy + ny / 2;
+    const x4 = cx - dx + nx / 2, y4 = cy - dy + ny / 2;
+    svg += `<polygon points="${x1},${y1} ${x2},${y2} ${x3},${y3} ${x4},${y4}" fill="#ffffff" filter="url(#glowStrong)" class="power-block" style="animation-delay:${i * 0.15}s"/>`;
+  }
+  if (blocks) blocks.innerHTML = svg;
+}
+generatePowerBlocks();
+
 // Sensor dots
 for (let i = 0; i < 10; i++) {
   const dot = document.createElement("div");
@@ -205,19 +233,19 @@ async function loadSavedKeys() {
     if (g) els.geminiKey.value = g;
   } catch (_) {}
   try {
-    const e = localStorage.getItem("jarvis_eleven_key");
-    if (e) els.elevenKey.value = e;
+    const e = localStorage.getItem("jarvis_fish_key");
+    if (e) els.fishKey.value = e;
   } catch (_) {}
   try {
-    const v = localStorage.getItem("jarvis_voice_id");
-    if (v) els.elevenVoiceId.value = v;
+    const v = localStorage.getItem("jarvis_fish_voice_id");
+    if (v) els.fishVoiceId.value = v;
   } catch (_) {}
 }
 
 function saveKeys() {
   try { localStorage.setItem("jarvis_gemini_key", geminiKey); } catch (_) {}
-  try { if (elevenKey) localStorage.setItem("jarvis_eleven_key", elevenKey); } catch (_) {}
-  try { if (elevenVoiceId) localStorage.setItem("jarvis_voice_id", elevenVoiceId); } catch (_) {}
+  try { if (fishKey) localStorage.setItem("jarvis_fish_key", fishKey); } catch (_) {}
+  try { if (fishVoiceId) localStorage.setItem("jarvis_fish_voice_id", fishVoiceId); } catch (_) {}
 }
 
 loadSavedKeys();
@@ -226,8 +254,8 @@ loadSavedKeys();
 els.enableBtn.addEventListener("click", async () => {
   els.errorBox.classList.add("hidden");
   geminiKey = sanitizeKey(els.geminiKey.value);
-  elevenKey = sanitizeKey(els.elevenKey.value);
-  elevenVoiceId = sanitizeKey(els.elevenVoiceId.value);
+  fishKey = sanitizeKey(els.fishKey.value);
+  fishVoiceId = sanitizeKey(els.fishVoiceId.value);
 
   if (!geminiKey) {
     showError("A Gemini API key is required — get one free at aistudio.google.com/apikey");
@@ -584,19 +612,19 @@ async function handleAudioOrText(input) {
 // ---------- TTS ----------
 async function speakText(text) {
   setState("speaking");
-  if (elevenKey && elevenVoiceId) {
+  if (fishKey && fishVoiceId) {
     try {
-      const res = await fetch("https://api.elevenlabs.io/v1/text-to-speech/" + elevenVoiceId, {
+      const res = await fetch("https://api.fish.audio/v1/tts", {
         method: "POST",
         headers: {
-          "xi-api-key": elevenKey,
+          "Authorization": "Bearer " + fishKey,
           "Content-Type": "application/json",
-          "Accept": "audio/mpeg",
+          "model": "s2-pro",
         },
         body: JSON.stringify({
           text: text,
-          model_id: "eleven_turbo_v2_5",
-          voice_settings: { stability: 0.5, similarity_boost: 0.75 },
+          reference_id: fishVoiceId,
+          format: "mp3",
         }),
       });
       if (!res.ok) {
@@ -613,7 +641,8 @@ async function speakText(text) {
       });
       return;
     } catch (err) {
-      console.warn("ElevenLabs TTS failed, falling back:", err);
+      console.warn("Fish Audio TTS failed, falling back:", err);
+      if (els.debug) els.debug.textContent = "Fish Audio failed (" + err.message + ") — using browser voice";
     }
   }
   await speakWithBrowserVoice(text);
