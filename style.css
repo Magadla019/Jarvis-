@@ -380,6 +380,7 @@ body::after {
 .ring-dashed { animation: spin 18s linear infinite; transform-origin: center; }
 .hex-ring { animation: spin 35s linear infinite reverse; transform-origin: center; }
 .ring-segments { animation: spin 12s linear infinite; transform-origin: center; }
+.iris-blades { animation: spin 9s linear infinite reverse; transform-origin: center; }
 .scan-sweep { animation: scanSweep 3s linear infinite; transform-origin: center; }
 .core-glow { animation: coreGlow 4s ease-in-out infinite; transform-origin: center; }
 .core-ring { animation: pulseRing 3s ease-in-out infinite; transform-origin: center; }
@@ -403,8 +404,11 @@ body::after {
 #dashboard.speaking .ticks-ring { animation-duration: 8s; }
 #dashboard.speaking .ring-dashed { animation-duration: 6s; }
 #dashboard.speaking .hex-ring { animation-duration: 12s; }
+#dashboard.speaking .iris-blades { animation-duration: 3s; }
 #dashboard.speaking .core-glow { animation-duration: 1.5s; }
 #dashboard.speaking .core-solid { animation-duration: 0.8s; }
+
+#dashboard.thinking .iris-blades { animation-duration: 2.5s; }
 
 #dashboard.listening .jarvis-orb { filter: drop-shadow(0 0 30px rgba(0,255,136,0.35)); }
 #dashboard.thinking .jarvis-orb { filter: drop-shadow(0 0 35px rgba(255,170,0,0.35)); }

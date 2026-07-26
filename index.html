@@ -149,6 +149,9 @@
           <!-- Hexagon -->
           <polygon points="300,195 396,250 396,350 300,405 204,350 204,250" fill="none" stroke="#55d8ff" stroke-opacity="0.35" stroke-width="2" class="hex-ring"/>
 
+          <!-- Iris blade ring — the diagonal-blade "aperture" look -->
+          <g class="iris-blades" id="irisBlades"></g>
+
           <!-- Inner ring with segments -->
           <circle cx="300" cy="300" r="200" fill="none" stroke="#00a8ff" stroke-opacity="0.2" stroke-width="20" stroke-dasharray="30 15" class="ring-segments"/>
 
@@ -166,11 +169,15 @@
           <!-- Center number -->
           <text x="300" y="315" text-anchor="middle" fill="#fff" font-family="'Share Tech Mono', monospace" font-size="32" font-weight="bold" class="center-num" id="centerNum" filter="url(#glow)">13</text>
 
-          <!-- Decorative markers -->
+          <!-- Decorative ringed node markers -->
           <g class="markers">
+            <circle cx="300" cy="40" r="9" fill="none" stroke="#00A8FF" stroke-width="1.5" stroke-opacity="0.7"/>
             <circle cx="300" cy="40" r="4" fill="#00A8FF" filter="url(#glow)"/>
+            <circle cx="300" cy="560" r="9" fill="none" stroke="#00A8FF" stroke-width="1.5" stroke-opacity="0.7"/>
             <circle cx="300" cy="560" r="4" fill="#00A8FF" filter="url(#glow)"/>
+            <circle cx="40" cy="300" r="9" fill="none" stroke="#00A8FF" stroke-width="1.5" stroke-opacity="0.7"/>
             <circle cx="40" cy="300" r="4" fill="#00A8FF" filter="url(#glow)"/>
+            <circle cx="560" cy="300" r="9" fill="none" stroke="#00A8FF" stroke-width="1.5" stroke-opacity="0.7"/>
             <circle cx="560" cy="300" r="4" fill="#00A8FF" filter="url(#glow)"/>
           </g>
         </svg>

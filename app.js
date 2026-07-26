@@ -121,25 +121,53 @@ function updateMetrics() {
 setInterval(updateMetrics, 1000);
 updateMetrics();
 
-// Generate tick marks for orb
+// Generate tick marks for orb — chunkier alternating bracket blocks
 function generateTicks() {
-  const count = 60;
+  const count = 48;
   let svg = "";
   for (let i = 0; i < count; i++) {
     const angle = (i / count) * Math.PI * 2;
-    const r1 = 215;
-    const r2 = i % 5 === 0 ? 230 : 222;
+    const isMajor = i % 4 === 0;
+    const r1 = 250;
+    const r2 = isMajor ? 272 : 262;
     const x1 = 300 + Math.cos(angle) * r1;
     const y1 = 300 + Math.sin(angle) * r1;
     const x2 = 300 + Math.cos(angle) * r2;
     const y2 = 300 + Math.sin(angle) * r2;
-    const width = i % 5 === 0 ? 2 : 1;
-    const opacity = i % 5 === 0 ? 0.5 : 0.25;
+    const width = isMajor ? 5 : 2.5;
+    const opacity = isMajor ? 0.6 : 0.3;
     svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#6fe9ff" stroke-width="${width}" stroke-opacity="${opacity}" stroke-linecap="round"/>`;
   }
   els.ticksRing.innerHTML = svg;
 }
 generateTicks();
+
+// Generate the iris-blade ring — angled trapezoid blades around a circle,
+// the diagonal "aperture" look that's the centerpiece of the reference HUD.
+function generateIrisBlades() {
+  const count = 40;
+  const rInner = 148;
+  const rOuter = 192;
+  const blades = document.getElementById("irisBlades");
+  let svg = "";
+  for (let i = 0; i < count; i++) {
+    const a1 = (i / count) * Math.PI * 2;
+    const a2 = a1 + (Math.PI * 2 / count) * 0.55; // blade width
+    const skew = 0.35; // how much each blade leans, for the angled-iris look
+    const x1 = 300 + Math.cos(a1) * rInner;
+    const y1 = 300 + Math.sin(a1) * rInner;
+    const x2 = 300 + Math.cos(a2 + skew) * rOuter;
+    const y2 = 300 + Math.sin(a2 + skew) * rOuter;
+    const x3 = 300 + Math.cos(a2) * rOuter;
+    const y3 = 300 + Math.sin(a2) * rOuter;
+    const x4 = 300 + Math.cos(a1 - skew * 0.3) * rInner;
+    const y4 = 300 + Math.sin(a1 - skew * 0.3) * rInner;
+    const opacity = i % 3 === 0 ? 0.85 : 0.4;
+    svg += `<polygon points="${x1},${y1} ${x2},${y2} ${x3},${y3} ${x4},${y4}" fill="#6fe9ff" fill-opacity="${opacity}" stroke="#bfffff" stroke-opacity="0.3" stroke-width="0.5"/>`;
+  }
+  if (blades) blades.innerHTML = svg;
+}
+generateIrisBlades();
 
 // Sensor dots
 for (let i = 0; i < 10; i++) {
