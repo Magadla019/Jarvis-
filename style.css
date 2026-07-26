@@ -119,6 +119,12 @@ body::after {
   color: #ff9999; padding: 12px; border-radius: 8px;
   font-size: 0.85rem; margin-top: 14px; text-align: left;
 }
+.setup-debug {
+  font-size: 0.7rem; color: var(--text-dark);
+  font-family: 'Share Tech Mono', monospace;
+  margin-top: 10px; letter-spacing: 1px;
+  min-height: 1.2em;
+}
 .setup-note {
   font-size: 0.75rem; color: var(--text-dark); margin-top: 16px;
 }
@@ -127,6 +133,9 @@ body::after {
 #dashboard {
   position: fixed; inset: 0;
   display: grid;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.3s;
   grid-template-rows: 52px 1fr 140px;
   grid-template-columns: 260px 1fr 260px;
   grid-template-areas:

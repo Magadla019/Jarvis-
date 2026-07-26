@@ -8,61 +8,65 @@ const SYSTEM_INSTRUCTION = "You are Jarvis, a professional, calm, confident, " +
   "since they will be read aloud. Always tell the truth and never pretend " +
   "something is complete if it isn't.";
 
-const els = {
-  setup: document.getElementById("setupScreen"),
-  dashboard: document.getElementById("dashboard"),
-  geminiKey: document.getElementById("geminiKey"),
-  elevenKey: document.getElementById("elevenKey"),
-  elevenVoiceId: document.getElementById("elevenVoiceId"),
-  enableBtn: document.getElementById("enableBtn"),
-  errorBox: document.getElementById("errorBox"),
-  stateLabel: document.getElementById("stateLabel"),
-  transcript: document.getElementById("transcript"),
-  reply: document.getElementById("reply"),
-  ptt: document.getElementById("pushToTalk"),
-  settingsLink: document.getElementById("settingsLink"),
-  debug: document.getElementById("debugLine"),
-  infoCard: document.getElementById("infoCard"),
-  infoTime: document.getElementById("infoTime"),
-  cpuBar: document.getElementById("cpuBar"),
-  memBar: document.getElementById("memBar"),
-  headerTime: document.getElementById("headerTime"),
-  headerDate: document.getElementById("headerDate"),
-  signalVal: document.getElementById("signalVal"),
-  uptimeVal: document.getElementById("uptimeVal"),
-  packetsVal: document.getElementById("packetsVal"),
-  throughputVal: document.getElementById("throughputVal"),
-  latencyVal: document.getElementById("latencyVal"),
-  bufferVal: document.getElementById("bufferVal"),
-  centerNum: document.getElementById("centerNum"),
-  aiIndicator: document.getElementById("aiIndicator"),
-  aiStatusText: document.getElementById("aiStatusText"),
-  modeBarFill: document.getElementById("modeBarFill"),
-  orbTouch: document.getElementById("orbTouch"),
-  dockSetup: document.getElementById("dockSetup"),
-  ticksRing: document.getElementById("ticksRing"),
-  sensorDots: document.getElementById("sensorDots"),
-};
-
-function sanitizeKey(raw) {
-  return raw.replace(/[^\x20-\x7E]/g, "").trim();
+// Debug helper
+function log(msg) {
+  console.log("[JARVIS]", msg);
+  const debugEl = document.getElementById("debugLine");
+  if (debugEl) debugEl.textContent = msg;
+  const setupDebug = document.getElementById("setupDebug");
+  if (setupDebug) setupDebug.textContent = msg;
 }
 
+// Safe element getter
+function $(id) {
+  const el = document.getElementById(id);
+  if (!el) console.warn("[JARVIS] Missing element:", id);
+  return el;
+}
+
+const els = {};
 let geminiKey = "";
 let elevenKey = "";
 let elevenVoiceId = "";
 let history = [];
 let startTime = Date.now();
+let micStream = null;
+let mediaRecorder = null;
+let audioChunks = [];
+let recorderReady = false;
+let wakeRec = null;
+let commandRec = null;
+let isListeningForCommand = false;
+let wakeActive = false;
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const WAKE_PATTERNS = [/\bhi jarvis\b/i, /\bhey jarvis\b/i, /\bjarvis\b/i, /\bhello jarvis\b/i];
+const TIME_PATTERNS = [/\bwhat'?s? the time\b/i, /\bwhat time is it\b/i, /\bcurrent time\b/i, /\btell me the time\b/i];
+
+function sanitizeKey(raw) {
+  return (raw || "").replace(/[^\x20-\x7E]/g, "").trim();
+}
 
 function showError(msg) {
-  els.errorBox.textContent = msg;
-  els.errorBox.classList.remove("hidden");
+  const box = $("errorBox");
+  if (box) {
+    box.textContent = msg;
+    box.classList.remove("hidden");
+  }
+  log("ERROR: " + msg);
+}
+
+function hideError() {
+  const box = $("errorBox");
+  if (box) box.classList.add("hidden");
 }
 
 function setState(state) {
-  const dash = els.dashboard;
-  dash.classList.remove("idle", "listening", "thinking", "speaking", "offline");
-  dash.classList.add(state);
+  const dash = $("dashboard");
+  if (dash) {
+    dash.classList.remove("idle", "listening", "thinking", "speaking", "offline");
+    dash.classList.add(state);
+  }
 
   const labelMap = {
     idle: "STANDBY MODE",
@@ -71,58 +75,75 @@ function setState(state) {
     speaking: "RESPONDING...",
     offline: "OFFLINE"
   };
-  els.stateLabel.textContent = labelMap[state] || state.toUpperCase();
+  const label = $("stateLabel");
+  if (label) label.textContent = labelMap[state] || state.toUpperCase();
 
-  // AI indicator
+  const aiDot = $("aiIndicator");
+  const aiText = $("aiStatusText");
   if (state === "offline") {
-    els.aiIndicator.className = "ai-dot offline";
-    els.aiStatusText.textContent = "Offline";
+    if (aiDot) aiDot.className = "ai-dot offline";
+    if (aiText) aiText.textContent = "Offline";
   } else if (state === "thinking") {
-    els.aiIndicator.className = "ai-dot processing";
-    els.aiStatusText.textContent = "Processing";
+    if (aiDot) aiDot.className = "ai-dot processing";
+    if (aiText) aiText.textContent = "Processing";
   } else if (state === "listening") {
-    els.aiIndicator.className = "ai-dot processing";
-    els.aiStatusText.textContent = "Listening";
+    if (aiDot) aiDot.className = "ai-dot processing";
+    if (aiText) aiText.textContent = "Listening";
   } else if (state === "speaking") {
-    els.aiIndicator.className = "ai-dot";
-    els.aiStatusText.textContent = "Speaking";
+    if (aiDot) aiDot.className = "ai-dot";
+    if (aiText) aiText.textContent = "Speaking";
   } else {
-    els.aiIndicator.className = "ai-dot";
-    els.aiStatusText.textContent = "Online";
+    if (aiDot) aiDot.className = "ai-dot";
+    if (aiText) aiText.textContent = "Online";
   }
 
-  const fillMap = { idle: "5%", listening: "35%", thinking: "75%", speaking: "100%", offline: "10%" };
-  els.modeBarFill.style.width = fillMap[state] || "5%";
+  const fill = $("modeBarFill");
+  if (fill) {
+    const widths = { idle: "5%", listening: "35%", thinking: "75%", speaking: "100%", offline: "10%" };
+    fill.style.width = widths[state] || "5%";
+  }
 }
 
-// ---------- Live Data Simulation ----------
+// ---------- Live Data ----------
 function updateMetrics() {
-  els.cpuBar.style.width = (18 + Math.random() * 22) + "%";
-  els.memBar.style.width = (32 + Math.random() * 28) + "%";
+  const cpu = $("cpuBar");
+  const mem = $("memBar");
+  if (cpu) cpu.style.width = (18 + Math.random() * 22) + "%";
+  if (mem) mem.style.width = (32 + Math.random() * 28) + "%";
 
   const now = new Date();
   const days = ["SUN","MON","TUE","WED","THU","FRI","SAT"];
   const months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
-  els.headerTime.textContent = now.toLocaleTimeString("en-US", {hour12:false, hour:"2-digit", minute:"2-digit"});
-  els.headerDate.textContent = days[now.getDay()] + ", " + months[now.getMonth()] + " " + now.getDate() + " " + now.getFullYear();
+  const timeEl = $("headerTime");
+  const dateEl = $("headerDate");
+  if (timeEl) timeEl.textContent = now.toLocaleTimeString("en-US", {hour12:false, hour:"2-digit", minute:"2-digit"});
+  if (dateEl) dateEl.textContent = days[now.getDay()] + ", " + months[now.getMonth()] + " " + now.getDate() + " " + now.getFullYear();
 
-  els.signalVal.textContent = (95 + Math.floor(Math.random() * 5)) + "%";
+  const sig = $("signalVal");
+  const up = $("uptimeVal");
+  const pkt = $("packetsVal");
+  const thr = $("throughputVal");
+  const lat = $("latencyVal");
+  const buf = $("bufferVal");
+  const cen = $("centerNum");
+
+  if (sig) sig.textContent = (95 + Math.floor(Math.random() * 5)) + "%";
   const uptime = Math.floor((Date.now() - startTime) / 1000);
   const h = String(Math.floor(uptime / 3600)).padStart(2,"0");
   const m = String(Math.floor((uptime % 3600) / 60)).padStart(2,"0");
   const s = String(uptime % 60).padStart(2,"0");
-  els.uptimeVal.textContent = h + ":" + m + ":" + s;
-  els.packetsVal.textContent = (0.8 + Math.random() * 0.8).toFixed(1) + "K/s";
-  els.throughputVal.textContent = (94 + Math.floor(Math.random() * 6)) + "%";
-  els.latencyVal.textContent = (8 + Math.floor(Math.random() * 12)) + "ms";
-  els.bufferVal.textContent = (0.2 + Math.random() * 0.4).toFixed(1) + "MB";
-  els.centerNum.textContent = now.getSeconds();
+  if (up) up.textContent = h + ":" + m + ":" + s;
+  if (pkt) pkt.textContent = (0.8 + Math.random() * 0.8).toFixed(1) + "K/s";
+  if (thr) thr.textContent = (94 + Math.floor(Math.random() * 6)) + "%";
+  if (lat) lat.textContent = (8 + Math.floor(Math.random() * 12)) + "ms";
+  if (buf) buf.textContent = (0.2 + Math.random() * 0.4).toFixed(1) + "MB";
+  if (cen) cen.textContent = now.getSeconds();
 }
-setInterval(updateMetrics, 1000);
-updateMetrics();
 
-// Generate tick marks for orb
+// ---------- Orb Ticks (deferred until dashboard visible) ----------
 function generateTicks() {
+  const ring = $("ticksRing");
+  if (!ring) return;
   const count = 60;
   let svg = "";
   for (let i = 0; i < count; i++) {
@@ -133,56 +154,40 @@ function generateTicks() {
     const y1 = 300 + Math.sin(angle) * r1;
     const x2 = 300 + Math.cos(angle) * r2;
     const y2 = 300 + Math.sin(angle) * r2;
-    const width = i % 5 === 0 ? 2 : 1;
-    const opacity = i % 5 === 0 ? 0.5 : 0.25;
-    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#6fe9ff" stroke-width="${width}" stroke-opacity="${opacity}" stroke-linecap="round"/>`;
+    const w = i % 5 === 0 ? 2 : 1;
+    const op = i % 5 === 0 ? 0.5 : 0.25;
+    svg += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#6fe9ff" stroke-width="${w}" stroke-opacity="${op}" stroke-linecap="round"/>`;
   }
-  els.ticksRing.innerHTML = svg;
-}
-generateTicks();
-
-// Sensor dots
-for (let i = 0; i < 10; i++) {
-  const dot = document.createElement("div");
-  dot.className = "dot";
-  dot.style.left = (10 + Math.random() * 80) + "%";
-  dot.style.top = (10 + Math.random() * 80) + "%";
-  dot.style.animationDelay = (Math.random() * 3) + "s";
-  els.sensorDots.appendChild(dot);
+  ring.innerHTML = svg;
 }
 
-// ---------- Dock Navigation ----------
-document.querySelectorAll(".dock-btn").forEach(item => {
-  item.addEventListener("click", () => {
-    document.querySelectorAll(".dock-btn").forEach(i => i.classList.remove("active"));
-    item.classList.add("active");
-    const tab = item.dataset.tab;
-    const mods = ["sys","net","com","data","ai","sens","sec","logs"];
-    document.querySelectorAll(".hud-label").forEach((m, idx) => {
-      m.classList.toggle("active", mods[idx] === tab);
-    });
-  });
-});
-
-els.dockSetup.addEventListener("click", () => {
-  els.dashboard.classList.add("hidden");
-  els.setup.classList.remove("hidden");
-  stopAllRecognition();
-});
+function generateSensorDots() {
+  const container = $("sensorDots");
+  if (!container) return;
+  container.innerHTML = "";
+  for (let i = 0; i < 10; i++) {
+    const dot = document.createElement("div");
+    dot.className = "dot";
+    dot.style.left = (10 + Math.random() * 80) + "%";
+    dot.style.top = (10 + Math.random() * 80) + "%";
+    dot.style.animationDelay = (Math.random() * 3) + "s";
+    container.appendChild(dot);
+  }
+}
 
 // ---------- Keys ----------
-async function loadSavedKeys() {
+function loadSavedKeys() {
   try {
     const g = localStorage.getItem("jarvis_gemini_key");
-    if (g) els.geminiKey.value = g;
+    if (g && $("geminiKey")) $("geminiKey").value = g;
   } catch (_) {}
   try {
     const e = localStorage.getItem("jarvis_eleven_key");
-    if (e) els.elevenKey.value = e;
+    if (e && $("elevenKey")) $("elevenKey").value = e;
   } catch (_) {}
   try {
     const v = localStorage.getItem("jarvis_voice_id");
-    if (v) els.elevenVoiceId.value = v;
+    if (v && $("elevenVoiceId")) $("elevenVoiceId").value = v;
   } catch (_) {}
 }
 
@@ -192,79 +197,126 @@ function saveKeys() {
   try { if (elevenVoiceId) localStorage.setItem("jarvis_voice_id", elevenVoiceId); } catch (_) {}
 }
 
-loadSavedKeys();
+// ---------- Initialize ----------
+function initDashboard() {
+  log("Initializing dashboard...");
+  generateTicks();
+  generateSensorDots();
+  setInterval(updateMetrics, 1000);
+  updateMetrics();
+  setState("idle");
 
-// ---------- Enable Flow ----------
-els.enableBtn.addEventListener("click", async () => {
-  els.errorBox.classList.add("hidden");
-  geminiKey = sanitizeKey(els.geminiKey.value);
-  elevenKey = sanitizeKey(els.elevenKey.value);
-  elevenVoiceId = sanitizeKey(els.elevenVoiceId.value);
+  const trans = $("transcript");
+  const rep = $("reply");
+  if (trans) trans.textContent = "";
+  if (rep) rep.textContent = "Say \"Hi Jarvis\" or tap the core to begin.";
 
-  if (!geminiKey) {
-    showError("A Gemini API key is required — get one free at aistudio.google.com/apikey");
-    return;
+  // Dock nav
+  document.querySelectorAll(".dock-btn").forEach(item => {
+    item.addEventListener("click", () => {
+      document.querySelectorAll(".dock-btn").forEach(i => i.classList.remove("active"));
+      item.classList.add("active");
+      const tab = item.dataset.tab;
+      const mods = ["sys","net","com","data","ai","sens","sec","logs"];
+      document.querySelectorAll(".hud-label").forEach((m, idx) => {
+        m.classList.toggle("active", mods[idx] === tab);
+      });
+    });
+  });
+
+  const dockSetup = $("dockSetup");
+  if (dockSetup) {
+    dockSetup.addEventListener("click", () => {
+      const dash = $("dashboard");
+      const setup = $("setupScreen");
+      if (dash) dash.classList.add("hidden");
+      if (setup) setup.classList.remove("hidden");
+      stopAllRecognition();
+    });
   }
 
-  saveKeys();
-  els.setup.classList.add("hidden");
-  els.dashboard.classList.remove("hidden");
+  const settingsLink = $("settingsLink");
+  if (settingsLink) {
+    settingsLink.addEventListener("click", () => {
+      const dash = $("dashboard");
+      const setup = $("setupScreen");
+      if (dash) dash.classList.add("hidden");
+      if (setup) setup.classList.remove("hidden");
+      stopAllRecognition();
+    });
+  }
 
-  setState("idle");
-  els.transcript.textContent = "";
-  els.reply.textContent = "Say "Hi Jarvis" or tap the orb to begin.";
+  // Orb tap
+  const orbTouch = $("orbTouch");
+  if (orbTouch) orbTouch.addEventListener("click", toggleRecording);
 
-  // Request mic permission early
+  // Type fallback
+  const ptt = $("pushToTalk");
+  if (ptt) ptt.addEventListener("click", () => {
+    const typed = prompt("Type your message to JARVIS:");
+    if (typed && typed.trim()) handleAudioOrText({ text: typed.trim() });
+  });
+
+  // Try mic
+  requestMic();
+}
+
+async function requestMic() {
   try {
     micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     setupRecorder();
     initWakeWord();
+    log("Microphone ready — wake word active");
   } catch (err) {
-    console.warn("Mic permission denied:", err);
-    els.debug.textContent = "Mic unavailable — tap orb to type";
+    log("Mic unavailable — tap core to type");
+    console.warn("Mic:", err.name, err.message);
   }
-});
+}
 
-els.settingsLink.addEventListener("click", () => {
-  els.dashboard.classList.add("hidden");
-  els.setup.classList.remove("hidden");
-  stopAllRecognition();
-});
+// ---------- Enable Button ----------
+function onEnableClick() {
+  log("Button clicked");
+  hideError();
 
-// ============================================
-// WAKE WORD + COMMAND FLOW (Robust)
-// ============================================
+  const gk = $("geminiKey");
+  const ek = $("elevenKey");
+  const ev = $("elevenVoiceId");
 
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-const WAKE_PATTERNS = [/\bhi jarvis\b/i, /\bhey jarvis\b/i, /\bjarvis\b/i, /\bhello jarvis\b/i];
+  geminiKey = sanitizeKey(gk ? gk.value : "");
+  elevenKey = sanitizeKey(ek ? ek.value : "");
+  elevenVoiceId = sanitizeKey(ev ? ev.value : "");
 
-let wakeRec = null;
-let commandRec = null;
-let isListeningForCommand = false;
-let micStream = null;
-let mediaRecorder = null;
-let audioChunks = [];
-let recorderReady = false;
-let wakeActive = false;
+  if (!geminiKey) {
+    showError("Gemini API key is required — get one free at aistudio.google.com/apikey");
+    return;
+  }
 
+  saveKeys();
+
+  const setup = $("setupScreen");
+  const dash = $("dashboard");
+
+  if (setup) setup.classList.add("hidden");
+  if (dash) {
+    dash.classList.remove("hidden");
+    // Force reflow
+    void dash.offsetWidth;
+  }
+
+  initDashboard();
+}
+
+// ---------- Wake Word ----------
 function stopAllRecognition() {
   wakeActive = false;
-  if (wakeRec) {
-    try { wakeRec.abort(); } catch (_) {}
-    try { wakeRec.stop(); } catch (_) {}
-    wakeRec = null;
-  }
-  if (commandRec) {
-    try { commandRec.abort(); } catch (_) {}
-    try { commandRec.stop(); } catch (_) {}
-    commandRec = null;
-  }
+  if (wakeRec) { try { wakeRec.abort(); } catch (_) {} try { wakeRec.stop(); } catch (_) {} wakeRec = null; }
+  if (commandRec) { try { commandRec.abort(); } catch (_) {} try { commandRec.stop(); } catch (_) {} commandRec = null; }
   isListeningForCommand = false;
 }
 
 function initWakeWord() {
   if (!SpeechRecognition) {
-    els.debug.textContent = "Speech API not supported in this browser";
+    log("Speech API not supported");
     return;
   }
   if (wakeActive) return;
@@ -279,25 +331,20 @@ function startWakeListening() {
   wakeRec.continuous = true;
   wakeRec.interimResults = true;
   wakeRec.lang = "en-US";
-  wakeRec.maxAlternatives = 1;
 
-  wakeRec.onstart = () => {
-    els.debug.textContent = "Listening for wake word...";
-  };
+  wakeRec.onstart = () => { log("Listening for wake word..."); };
 
   wakeRec.onresult = (event) => {
     if (isListeningForCommand) return;
-
     const result = event.results[event.results.length - 1];
     const text = result[0].transcript.trim();
-    const confidence = result[0].confidence || 0;
+    const conf = result[0].confidence || 0;
 
-    els.debug.textContent = 'Heard: "' + text + '"' + (result.isFinal ? " ✓" : " ...");
+    log('Heard: "' + text + '"' + (result.isFinal ? " " : " ..."));
 
-    if (result.isFinal && confidence > 0.3) {
+    if (result.isFinal && conf > 0.2) {
       if (WAKE_PATTERNS.some(p => p.test(text))) {
-        // WAKE WORD DETECTED
-        els.debug.textContent = "WAKE WORD DETECTED";
+        log("WAKE WORD DETECTED");
         try { wakeRec.stop(); } catch (_) {}
         wakeRec = null;
         acknowledgeAndListen();
@@ -308,50 +355,42 @@ function startWakeListening() {
   wakeRec.onerror = (event) => {
     const fatal = ["not-allowed", "service-not-allowed"];
     if (fatal.includes(event.error)) {
-      els.debug.textContent = "Mic access denied — tap orb to talk";
+      log("Mic access denied — tap core to talk");
       wakeActive = false;
       wakeRec = null;
       return;
     }
-    // Non-fatal: restart
     wakeRec = null;
-    if (wakeActive) {
-      setTimeout(startWakeListening, 400);
-    }
+    if (wakeActive) setTimeout(startWakeListening, 400);
   };
 
   wakeRec.onend = () => {
     wakeRec = null;
-    if (wakeActive && !isListeningForCommand) {
-      setTimeout(startWakeListening, 200);
-    }
+    if (wakeActive && !isListeningForCommand) setTimeout(startWakeListening, 200);
   };
 
-  try {
-    wakeRec.start();
-  } catch (err) {
+  try { wakeRec.start(); } catch (err) {
     wakeRec = null;
     setTimeout(startWakeListening, 500);
   }
 }
 
-// Step 1: Acknowledge then listen for command
 async function acknowledgeAndListen() {
   isListeningForCommand = true;
   setState("speaking");
-  els.transcript.textContent = "";
-  els.reply.textContent = "";
+  const trans = $("transcript");
+  const rep = $("reply");
+  if (trans) trans.textContent = "";
+  if (rep) rep.textContent = "";
 
   await speakText("Yes sir");
   startCommandListening();
 }
 
-// Step 2: Listen for command
 function startCommandListening() {
   if (!SpeechRecognition) return;
-
   setState("listening");
-  els.debug.textContent = "Listening for command...";
+  log("Listening for command...");
 
   commandRec = new SpeechRecognition();
   commandRec.continuous = false;
@@ -363,7 +402,7 @@ function startCommandListening() {
 
   const timeoutId = setTimeout(() => {
     if (!finalReceived && commandRec) {
-      els.debug.textContent = "Command timeout";
+      log("Command timeout");
       try { commandRec.stop(); } catch (_) {}
     }
   }, 10000);
@@ -371,8 +410,9 @@ function startCommandListening() {
   commandRec.onresult = (event) => {
     const result = event.results[event.results.length - 1];
     commandText = result[0].transcript.trim();
-    els.transcript.textContent = commandText;
-    els.debug.textContent = 'Command: "' + commandText + '"' + (result.isFinal ? " ✓" : " ...");
+    const trans = $("transcript");
+    if (trans) trans.textContent = commandText;
+    log('Command: "' + commandText + '"' + (result.isFinal ? " " : " ..."));
 
     if (result.isFinal) {
       finalReceived = true;
@@ -383,7 +423,7 @@ function startCommandListening() {
 
   commandRec.onerror = (event) => {
     clearTimeout(timeoutId);
-    els.debug.textContent = "Command error: " + event.error;
+    log("Command error: " + event.error);
     isListeningForCommand = false;
     commandRec = null;
     setState("idle");
@@ -398,15 +438,13 @@ function startCommandListening() {
     if (commandText.trim()) {
       handleAudioOrText({ text: commandText.trim() });
     } else {
-      els.debug.textContent = "No command heard — returning to wake mode";
+      log("No command heard — returning to wake mode");
       setState("idle");
       startWakeListening();
     }
   };
 
-  try {
-    commandRec.start();
-  } catch (err) {
+  try { commandRec.start(); } catch (err) {
     clearTimeout(timeoutId);
     isListeningForCommand = false;
     commandRec = null;
@@ -415,15 +453,14 @@ function startCommandListening() {
   }
 }
 
-// ---------- Audio Recording (orb tap) ----------
+// ---------- Audio Recording ----------
 function setupRecorder() {
   try {
-    if (!micStream) throw new Error("No mic stream");
+    if (!micStream) throw new Error("No mic");
     mediaRecorder = new MediaRecorder(micStream);
     mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
     recorderReady = true;
   } catch (err) {
-    console.warn("Recorder setup failed:", err);
     recorderReady = false;
   }
 }
@@ -446,8 +483,10 @@ async function toggleRecording() {
 
   if (mediaRecorder.state === "inactive") {
     audioChunks = [];
-    els.transcript.textContent = "";
-    els.reply.textContent = "";
+    const trans = $("transcript");
+    const rep = $("reply");
+    if (trans) trans.textContent = "";
+    if (rep) rep.textContent = "";
     setState("listening");
     stopAllRecognition();
     mediaRecorder.start();
@@ -462,17 +501,7 @@ async function toggleRecording() {
   }
 }
 
-els.orbTouch.addEventListener("click", toggleRecording);
-
-// Fallback: type instead of talk
-els.ptt.addEventListener("click", () => {
-  const typed = prompt("Type your message to JARVIS:");
-  if (typed && typed.trim()) handleAudioOrText({ text: typed.trim() });
-});
-
-// ---------- Time Query ----------
-const TIME_PATTERNS = [/\bwhat.?s the time\b/i, /\bwhat time is it\b/i, /\bcurrent time\b/i, /\btell me the time\b/i];
-
+// ---------- Time ----------
 function getSASTTime() {
   const now = new Date();
   const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
@@ -491,21 +520,26 @@ function getSASTTime() {
 async function handleTimeQuery() {
   setState("thinking");
   const t = getSASTTime();
-  els.infoTime.textContent = t.display;
-  els.infoCard.classList.remove("hidden");
-  els.reply.textContent = "";
+  const infoTime = $("infoTime");
+  const infoCard = $("infoCard");
+  if (infoTime) infoTime.textContent = t.display;
+  if (infoCard) infoCard.classList.remove("hidden");
+  const rep = $("reply");
+  if (rep) rep.textContent = "";
   await speakText(t.spoken);
-  els.infoCard.classList.add("hidden");
+  if (infoCard) infoCard.classList.add("hidden");
   setState("idle");
   startWakeListening();
 }
 
-// ---------- Brain: Gemini ----------
+// ---------- Gemini ----------
 async function handleAudioOrText(input) {
-  els.infoCard.classList.add("hidden");
+  const infoCard = $("infoCard");
+  if (infoCard) infoCard.classList.add("hidden");
 
   if (input.text && TIME_PATTERNS.some(p => p.test(input.text))) {
-    els.transcript.textContent = input.text;
+    const trans = $("transcript");
+    if (trans) trans.textContent = input.text;
     return handleTimeQuery();
   }
 
@@ -516,7 +550,10 @@ async function handleAudioOrText(input) {
     : [{ text: input.text }];
 
   history.push({ role: "user", parts: userParts });
-  if (input.text) els.transcript.textContent = input.text;
+  if (input.text) {
+    const trans = $("transcript");
+    if (trans) trans.textContent = input.text;
+  }
 
   try {
     const url = "https://generativelanguage.googleapis.com/v1beta/models/" + GEMINI_MODEL + ":generateContent";
@@ -531,19 +568,21 @@ async function handleAudioOrText(input) {
 
     if (!res.ok) {
       const errText = await res.text();
-      throw new Error("Gemini error " + res.status + ": " + errText.slice(0, 150));
+      throw new Error("Gemini " + res.status + ": " + errText.slice(0, 150));
     }
 
     const data = await res.json();
     const replyText = data?.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("") || "";
-    if (!replyText) throw new Error("Gemini returned an empty response.");
+    if (!replyText) throw new Error("Empty response from Gemini.");
 
     history.push({ role: "model", parts: [{ text: replyText }] });
-    els.reply.textContent = replyText;
+    const rep = $("reply");
+    if (rep) rep.textContent = replyText;
     await speakText(replyText);
   } catch (err) {
     console.error(err);
-    els.reply.textContent = "JARVIS encountered an error: " + err.message;
+    const rep = $("reply");
+    if (rep) rep.textContent = "JARVIS error: " + err.message;
     setState("offline");
     setTimeout(() => setState("idle"), 3000);
     startWakeListening();
@@ -571,10 +610,7 @@ async function speakText(text) {
           voice_settings: { stability: 0.5, similarity_boost: 0.75 },
         }),
       });
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error("HTTP " + res.status + ": " + errText.slice(0, 150));
-      }
+      if (!res.ok) throw new Error("ElevenLabs " + res.status);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
@@ -585,7 +621,7 @@ async function speakText(text) {
       });
       return;
     } catch (err) {
-      console.warn("ElevenLabs TTS failed, falling back:", err);
+      console.warn("ElevenLabs failed:", err.message);
     }
   }
   await speakWithBrowserVoice(text);
@@ -603,11 +639,34 @@ function speakWithBrowserVoice(text) {
   });
 }
 
-// ---------- PWA ----------
+// ---------- Boot ----------
+function boot() {
+  log("JARVIS booting...");
+  try {
+    loadSavedKeys();
+    const btn = $("enableBtn");
+    if (btn) {
+      btn.addEventListener("click", onEnableClick);
+      log("Ready — waiting for initialize");
+    } else {
+      showError("System error: button not found");
+    }
+  } catch (err) {
+    showError("Boot failed: " + err.message);
+    console.error(err);
+  }
+}
+
+// Start when DOM is ready
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", boot);
+} else {
+  boot();
+}
+
+// PWA
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js").catch((err) => {
-      console.warn("SW registration failed:", err);
-    });
+    navigator.serviceWorker.register("sw.js").catch(() => {});
   });
 }
