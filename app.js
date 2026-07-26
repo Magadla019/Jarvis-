@@ -169,6 +169,34 @@ function generateIrisBlades() {
 }
 generateIrisBlades();
 
+// Generate the 8 white light blocks — evenly spaced glowing blocks
+function generatePowerBlocks() {
+  const count = 8;
+  const r = 170;
+  const blockLen = 22;
+  const blocks = document.getElementById("powerBlocks");
+  let svg = "";
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2 - Math.PI / 2; // start at top
+    const cx = 300 + Math.cos(angle) * r;
+    const cy = 300 + Math.sin(angle) * r;
+    // block rectangle oriented tangent to the circle
+    const tangentAngle = angle + Math.PI / 2;
+    const dx = Math.cos(tangentAngle) * (blockLen / 2);
+    const dy = Math.sin(tangentAngle) * (blockLen / 2);
+    const thickness = 7;
+    const nx = Math.cos(angle) * thickness;
+    const ny = Math.sin(angle) * thickness;
+    const x1 = cx - dx - nx / 2, y1 = cy - dy - ny / 2;
+    const x2 = cx + dx - nx / 2, y2 = cy + dy - ny / 2;
+    const x3 = cx + dx + nx / 2, y3 = cy + dy + ny / 2;
+    const x4 = cx - dx + nx / 2, y4 = cy - dy + ny / 2;
+    svg += `<polygon points="${x1},${y1} ${x2},${y2} ${x3},${y3} ${x4},${y4}" fill="#ffffff" filter="url(#glowStrong)" class="power-block" style="animation-delay:${i * 0.15}s"/>`;
+  }
+  if (blocks) blocks.innerHTML = svg;
+}
+generatePowerBlocks();
+
 // Sensor dots
 for (let i = 0; i < 10; i++) {
   const dot = document.createElement("div");

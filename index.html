@@ -146,11 +146,15 @@
           <!-- Rotating dashed ring -->
           <circle cx="300" cy="300" r="240" fill="none" stroke="#38d8ff" stroke-opacity="0.35" stroke-width="2" stroke-dasharray="18 12" class="ring-dashed"/>
 
-          <!-- Hexagon -->
-          <polygon points="300,195 396,250 396,350 300,405 204,350 204,250" fill="none" stroke="#55d8ff" stroke-opacity="0.35" stroke-width="2" class="hex-ring"/>
+          <!-- Triangle energy core (original design) -->
+          <polygon points="300,205 390,370 210,370" fill="none" stroke="#8cf7ff" stroke-opacity="0.55" stroke-width="2.5" class="hex-ring"/>
+          <polygon points="300,225 372,355 228,355" fill="#38d8ff" fill-opacity="0.18" class="tri-fill"/>
 
           <!-- Iris blade ring — the diagonal-blade "aperture" look -->
           <g class="iris-blades" id="irisBlades"></g>
+
+          <!-- 8-block white light ring -->
+          <g class="power-blocks" id="powerBlocks"></g>
 
           <!-- Inner ring with segments -->
           <circle cx="300" cy="300" r="200" fill="none" stroke="#00a8ff" stroke-opacity="0.2" stroke-width="20" stroke-dasharray="30 15" class="ring-segments"/>
