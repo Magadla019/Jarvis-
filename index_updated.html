@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#020408">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="JARVIS">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23020408'/%3E%3Ccircle cx='32' cy='32' r='20' fill='none' stroke='%2300A8FF' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='8' fill='%2300A8FF'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' fill='%23020408'/%3E%3Ccircle cx='90' cy='90' r='55' fill='none' stroke='%2300A8FF' stroke-width='6'/%3E%3Ccircle cx='90' cy='90' r='22' fill='%2300A8FF'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="startup.css">
+<title>JARVIS</title>
+</head>
+<body>
+
+  <!-- SETUP SCREEN -->
+  <div id="setupScreen" class="screen">
+    <div class="setup-card">
+      <div class="setup-logo">JARVIS</div>
+      <div class="setup-version">SYSTEM v6.2</div>
+      <p class="setup-desc">Say <strong>"Hi Jarvis"</strong> or tap the core to activate.<br>Your keys stay on this device.</p>
+
+      <div class="field">
+        <label>Gemini API Key <span class="req">*</span></label>
+        <input type="password" id="geminiKey" placeholder="AIza..." autocomplete="off">
+        <small>aistudio.google.com/apikey</small>
+      </div>
+
+      <div class="field">
+        <label>Fish Audio API Key</label>
+        <input type="password" id="fishKey" placeholder="your Fish Audio API key" autocomplete="off">
+        <small>Optional — for JARVIS voice</small>
+      </div>
+
+      <div class="field">
+        <label>Fish Audio Voice (Reference) ID</label>
+        <input type="text" id="fishVoiceId" placeholder="e.g. 77bc765f1a06494bb993d5f83de1ea96" autocomplete="off">
+      </div>
+
+      <button id="enableBtn">INITIALIZE SYSTEM</button>
+      <div id="errorBox" class="error-box hidden"></div>
+      <div class="setup-note">Chrome / Edge / Safari recommended</div>
+    </div>
+  </div>
+
+  <!-- MAIN DASHBOARD -->
+  <div id="dashboard" class="hidden">
+
+    <!-- HEADER -->
+    <header class="header">
+      <div class="header-left">
+        <div class="header-logo">JARVIS</div>
+        <div class="header-tag">
+          <span class="status-dot"></span>
+          <span>ONLINE</span>
+        </div>
+      </div>
+      <div class="header-center">
+        <div class="sys-title">SYSTEM OVERVIEW</div>
+        <div class="sys-sub">ALL SYSTEMS OPERATIONAL</div>
+      </div>
+      <div class="header-right">
+        <div class="mini-metrics">
+          <div class="mm"><label>CPU</label><div class="mm-bar"><div id="cpuBar"></div></div></div>
+          <div class="mm"><label>MEM</label><div class="mm-bar"><div id="memBar"></div></div></div>
+        </div>
+        <div class="header-clock">
+          <div id="headerTime">13:33</div>
+          <div id="headerDate">SAT, MAY 24 2025</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- LEFT PANEL -->
+    <aside class="panel-left">
+      <div class="panel">
+        <div class="panel-title">◉ SYSTEMS</div>
+        <div class="systems-list">
+          <div class="sys-row"><span>CORE</span><span class="sys-dot active"></span></div>
+          <div class="sys-row"><span>NETWORK</span><span class="sys-dot active"></span></div>
+          <div class="sys-row"><span>SENSORS</span><span class="sys-dot active"></span></div>
+          <div class="sys-row"><span>DATABASE</span><span class="sys-dot active"></span></div>
+          <div class="sys-row"><span>SECURITY</span><span class="sys-dot active"></span></div>
+          <div class="sys-row"><span>AI MODULE</span><span class="sys-dot active"></span></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">◉ SENSOR FEED</div>
+        <div class="sensor-box">
+          <div class="sensor-map"></div>
+          <div class="sensor-dots" id="sensorDots"></div>
+        </div>
+        <div class="sensor-data">
+          <div><span>SATELLITES</span><span>12</span></div>
+          <div><span>ACTIVITY</span><span class="highlight">HIGH</span></div>
+          <div><span>SIGNAL</span><span id="signalVal">98%</span></div>
+          <div><span>UPTIME</span><span id="uptimeVal">00:00:00</span></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">◉ DATA STREAM</div>
+        <div class="stream-data">
+          <div><span>PACKETS</span><span id="packetsVal">1.2K/s</span></div>
+          <div><span>THROUGHPUT</span><span id="throughputVal">98%</span></div>
+          <div><span>LATENCY</span><span id="latencyVal">12ms</span></div>
+          <div><span>BUFFER</span><span id="bufferVal">0.4MB</span></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CENTER ORB -->
+    <main class="panel-center">
+      <div class="orb-wrapper">
+        <svg class="jarvis-orb" viewBox="0 0 600 600" id="jarvisOrb">
+          <defs>
+            <radialGradient id="coreGrad" cx="50%" cy="50%">
+              <stop offset="0%" stop-color="#bfffff"/>
+              <stop offset="40%" stop-color="#38d8ff"/>
+              <stop offset="100%" stop-color="#0066ff" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="scanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#8cf7ff" stop-opacity="0"/>
+              <stop offset="50%" stop-color="#8cf7ff" stop-opacity="0.9"/>
+              <stop offset="100%" stop-color="#8cf7ff" stop-opacity="0"/>
+            </linearGradient>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+              <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+            <filter id="glowStrong">
+              <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+              <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+
+          <!-- Outer dashed ring -->
+          <circle cx="300" cy="300" r="280" fill="none" stroke="#2dbfff" stroke-opacity="0.25" stroke-width="1.5" stroke-dasharray="6 10" class="ring-outer"/>
+
+          <!-- Tick marks ring -->
+          <g class="ticks-ring" id="ticksRing"></g>
+
+          <!-- Rotating dashed ring -->
+          <circle cx="300" cy="300" r="240" fill="none" stroke="#38d8ff" stroke-opacity="0.35" stroke-width="2" stroke-dasharray="18 12" class="ring-dashed"/>
+
+          <!-- Hexagon -->
+          <polygon points="300,195 396,250 396,350 300,405 204,350 204,250" fill="none" stroke="#55d8ff" stroke-opacity="0.35" stroke-width="2" class="hex-ring"/>
+
+          <!-- Iris blade ring — the diagonal-blade "aperture" look -->
+          <g class="iris-blades" id="irisBlades"></g>
+
+          <!-- Inner ring with segments -->
+          <circle cx="300" cy="300" r="200" fill="none" stroke="#00a8ff" stroke-opacity="0.2" stroke-width="20" stroke-dasharray="30 15" class="ring-segments"/>
+
+          <!-- Scanning sweep -->
+          <path d="M300,300 L300,20 A280,280 0 0 1 580,300 Z" fill="url(#scanGrad)" fill-opacity="0.4" class="scan-sweep"/>
+
+          <!-- Core glow -->
+          <circle cx="300" cy="300" r="120" fill="url(#coreGrad)" opacity="0.8" class="core-glow"/>
+
+          <!-- Core rings -->
+          <circle cx="300" cy="300" r="90" fill="none" stroke="#00a8ff" stroke-opacity="0.15" stroke-width="2"/>
+          <circle cx="300" cy="300" r="75" fill="#00a8ff" fill-opacity="0.12" stroke="#8cf7ff" stroke-width="2.5" class="core-ring"/>
+          <circle cx="300" cy="300" r="50" fill="#38d8ff" fill-opacity="0.35" class="core-solid"/>
+
+          <!-- Center number -->
+          <text x="300" y="315" text-anchor="middle" fill="#fff" font-family="'Share Tech Mono', monospace" font-size="32" font-weight="bold" class="center-num" id="centerNum" filter="url(#glow)">13</text>
+
+          <!-- Decorative ringed node markers -->
+          <g class="markers">
+            <circle cx="300" cy="40" r="9" fill="none" stroke="#00A8FF" stroke-width="1.5" stroke-opacity="0.7"/>
+            <circle cx="300" cy="40" r="4" fill="#00A8FF" filter="url(#glow)"/>
+            <circle cx="300" cy="560" r="9" fill="none" stroke="#00A8FF" stroke-width="1.5" stroke-opacity="0.7"/>
+            <circle cx="300" cy="560" r="4" fill="#00A8FF" filter="url(#glow)"/>
+            <circle cx="40" cy="300" r="9" fill="none" stroke="#00A8FF" stroke-width="1.5" stroke-opacity="0.7"/>
+            <circle cx="40" cy="300" r="4" fill="#00A8FF" filter="url(#glow)"/>
+            <circle cx="560" cy="300" r="9" fill="none" stroke="#00A8FF" stroke-width="1.5" stroke-opacity="0.7"/>
+            <circle cx="560" cy="300" r="4" fill="#00A8FF" filter="url(#glow)"/>
+          </g>
+        </svg>
+
+        <!-- HUD Module Labels around orb -->
+        <div class="hud-labels">
+          <div class="hud-label active" data-mod="0">SYS</div>
+          <div class="hud-label" data-mod="1">NET</div>
+          <div class="hud-label" data-mod="2">COM</div>
+          <div class="hud-label" data-mod="3">DATA</div>
+          <div class="hud-label" data-mod="4">AI</div>
+          <div class="hud-label" data-mod="5">SENS</div>
+          <div class="hud-label" data-mod="6">SEC</div>
+          <div class="hud-label" data-mod="7">LOGS</div>
+        </div>
+
+        <!-- Tap overlay -->
+        <div class="orb-touch" id="orbTouch" title="Tap to speak"></div>
+      </div>
+    </main>
+
+    <!-- RIGHT PANEL -->
+    <aside class="panel-right">
+      <div class="panel">
+        <div class="panel-title">◉ ENVIRONMENT</div>
+        <div class="env-loc">📍 Johannesburg, ZA</div>
+        <div class="env-temp" id="envTemp">56°F</div>
+        <div class="env-weather">☁ Partly Cloudy</div>
+        <div class="env-grid">
+          <div><label>HUMIDITY</label><value>45%</value></div>
+          <div><label>WIND</label><value>8 MPH</value></div>
+          <div><label>PRESSURE</label><value>1012 hPa</value></div>
+          <div><label>UV INDEX</label><value>3</value></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">◉ GLOBAL STATUS</div>
+        <div class="globe-box">
+          <div class="globe"></div>
+        </div>
+        <div class="global-data">
+          <div><span>ACTIVE SATELLITES</span><span>12</span></div>
+          <div><span>THREATS</span><span class="safe">LOW</span></div>
+          <div><span>SYSTEMS</span><span class="safe">NOMINAL</span></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">◉ AI ASSISTANT</div>
+        <div class="ai-box">
+          <div class="ai-dot" id="aiIndicator"></div>
+          <div class="ai-info">
+            <div>JARVIS v6.2</div>
+            <div id="aiStatusText">Online</div>
+          </div>
+        </div>
+        <div class="ai-wave" id="aiWave">
+          <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- BOTTOM CHAT -->
+    <section class="panel-bottom">
+      <div class="chat-box">
+        <div class="chat-label">JARVIS</div>
+        <div class="chat-transcript" id="transcript"></div>
+        <div class="chat-reply" id="reply"></div>
+        <div class="chat-meta">
+          <span class="mode-text" id="stateLabel">STANDBY MODE</span>
+          <div class="mode-progress"><div id="modeBarFill"></div></div>
+          <span class="debug-text" id="debugLine">Wake word active</span>
+        </div>
+      </div>
+
+      <nav class="dock">
+        <div class="dock-btn active" data-tab="sys">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6m4.22-10.22l4.24-4.24M6.34 6.34L2.1 2.1m17.9 9.9h-6m-6 0H1.9m16.32 4.24l4.24 4.24M6.34 17.66l-4.24 4.24"/></svg>
+          <span>SYS</span>
+        </div>
+        <div class="dock-btn" data-tab="net">
+          <svg viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg>
+          <span>NET</span>
+        </div>
+        <div class="dock-btn" data-tab="data">
+          <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg>
+          <span>DATA</span>
+        </div>
+        <div class="dock-btn" data-tab="ai">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          <span>AI</span>
+        </div>
+        <div class="dock-btn" data-tab="sens">
+          <svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9a7 7 0 0 0-7-7z"/><path d="M9 22h6"/></svg>
+          <span>SENS</span>
+        </div>
+        <div class="dock-btn" data-tab="sec">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span>SEC</span>
+        </div>
+        <div class="dock-btn" data-tab="logs">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+          <span>LOGS</span>
+        </div>
+        <div class="dock-btn" id="dockSetup">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 5 15.4a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span>SETUP</span>
+        </div>
+      </nav>
+    </section>
+
+    <!-- Settings Link -->
+    <div class="settings-link" id="settingsLink">⚙ KEYS</div>
+
+    <!-- Type FAB -->
+    <button id="pushToTalk" class="type-fab" title="Type message">⌨</button>
+
+    <!-- Time Popup -->
+    <div id="infoCard" class="info-card hidden">
+      <div class="flag">🇿🇦</div>
+      <div class="info-time" id="infoTime"></div>
+      <div class="info-label">South Africa · SAST (UTC+2)</div>
+    </div>
+  </div>
+
+<script src="startup.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
