@@ -11,6 +11,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23020408'/%3E%3Ccircle cx='32' cy='32' r='20' fill='none' stroke='%2300A8FF' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='8' fill='%2300A8FF'/%3E%3C/svg%3E">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' fill='%23020408'/%3E%3Ccircle cx='90' cy='90' r='55' fill='none' stroke='%2300A8FF' stroke-width='6'/%3E%3Ccircle cx='90' cy='90' r='22' fill='%2300A8FF'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="startup.css">
 <title>JARVIS</title>
 </head>
 <body>
@@ -23,9 +24,9 @@
       <p class="setup-desc">Say <strong>"Hi Jarvis"</strong> or tap the core to activate.<br>Your keys stay on this device.</p>
 
       <div class="field">
-        <label>Gemini API Key <span class="req">*</span></label>
-        <input type="password" id="geminiKey" placeholder="AIza..." autocomplete="off">
-        <small>aistudio.google.com/apikey</small>
+        <label>Groq API Key <span class="req">*</span></label>
+        <input type="password" id="groqKey" placeholder="gsk_..." value="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" autocomplete="off">
+        <small>console.groq.com/keys</small>
       </div>
 
       <div class="field">
@@ -304,6 +305,7 @@
     </div>
   </div>
 
+<script src="startup.js"></script>
 <script src="app.js"></script>
 </body>
-</html>
+  </html>
