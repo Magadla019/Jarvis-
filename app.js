@@ -1,8 +1,9 @@
 // ============================================
 // JARVIS SYSTEM v6.2 — Core Logic (Redesigned)
+// Groq Edition
 // ============================================
 
-const GEMINI_MODEL = "gemini-2.0-flash";
+const GROQ_MODEL = "llama-3.1-8b-instant";
 const SYSTEM_INSTRUCTION = "You are Jarvis, a professional, calm, confident, " +
   "friendly, intelligent AI assistant. Keep spoken replies concise (1-3 sentences) " +
   "since they will be read aloud. Always tell the truth and never pretend " +
@@ -11,7 +12,7 @@ const SYSTEM_INSTRUCTION = "You are Jarvis, a professional, calm, confident, " +
 const els = {
   setup: document.getElementById("setupScreen"),
   dashboard: document.getElementById("dashboard"),
-  geminiKey: document.getElementById("geminiKey"),
+  groqKey: document.getElementById("groqKey"),
   fishKey: document.getElementById("fishKey"),
   fishVoiceId: document.getElementById("fishVoiceId"),
   enableBtn: document.getElementById("enableBtn"),
@@ -48,7 +49,7 @@ function sanitizeKey(raw) {
   return raw.replace(/[^\x20-\x7E]/g, "").trim();
 }
 
-let geminiKey = "";
+let groqKey = "";
 let fishKey = "";
 let fishVoiceId = "";
 let history = [];
@@ -73,7 +74,6 @@ function setState(state) {
   };
   els.stateLabel.textContent = labelMap[state] || state.toUpperCase();
 
-  // AI indicator
   if (state === "offline") {
     els.aiIndicator.className = "ai-dot offline";
     els.aiStatusText.textContent = "Offline";
@@ -121,7 +121,7 @@ function updateMetrics() {
 setInterval(updateMetrics, 1000);
 updateMetrics();
 
-// Generate tick marks for orb — chunkier alternating bracket blocks
+// Generate tick marks for orb
 function generateTicks() {
   const count = 48;
   let svg = "";
@@ -142,8 +142,7 @@ function generateTicks() {
 }
 generateTicks();
 
-// Generate the iris-blade ring — angled trapezoid blades around a circle,
-// the diagonal "aperture" look that's the centerpiece of the reference HUD.
+// Generate the iris-blade ring
 function generateIrisBlades() {
   const count = 40;
   const rInner = 148;
@@ -152,8 +151,8 @@ function generateIrisBlades() {
   let svg = "";
   for (let i = 0; i < count; i++) {
     const a1 = (i / count) * Math.PI * 2;
-    const a2 = a1 + (Math.PI * 2 / count) * 0.55; // blade width
-    const skew = 0.35; // how much each blade leans, for the angled-iris look
+    const a2 = a1 + (Math.PI * 2 / count) * 0.55;
+    const skew = 0.35;
     const x1 = 300 + Math.cos(a1) * rInner;
     const y1 = 300 + Math.sin(a1) * rInner;
     const x2 = 300 + Math.cos(a2 + skew) * rOuter;
@@ -201,8 +200,8 @@ els.dockSetup.addEventListener("click", () => {
 // ---------- Keys ----------
 async function loadSavedKeys() {
   try {
-    const g = localStorage.getItem("jarvis_gemini_key");
-    if (g) els.geminiKey.value = g;
+    const g = localStorage.getItem("jarvis_groq_key");
+    if (g) els.groqKey.value = g;
   } catch (_) {}
   try {
     const e = localStorage.getItem("jarvis_fish_key");
@@ -215,7 +214,7 @@ async function loadSavedKeys() {
 }
 
 function saveKeys() {
-  try { localStorage.setItem("jarvis_gemini_key", geminiKey); } catch (_) {}
+  try { localStorage.setItem("jarvis_groq_key", groqKey); } catch (_) {}
   try { if (fishKey) localStorage.setItem("jarvis_fish_key", fishKey); } catch (_) {}
   try { if (fishVoiceId) localStorage.setItem("jarvis_fish_voice_id", fishVoiceId); } catch (_) {}
 }
@@ -225,12 +224,12 @@ loadSavedKeys();
 // ---------- Enable Flow ----------
 els.enableBtn.addEventListener("click", async () => {
   els.errorBox.classList.add("hidden");
-  geminiKey = sanitizeKey(els.geminiKey.value);
+  groqKey = sanitizeKey(els.groqKey.value);
   fishKey = sanitizeKey(els.fishKey.value);
   fishVoiceId = sanitizeKey(els.fishVoiceId.value);
 
-  if (!geminiKey) {
-    showError("A Gemini API key is required — get one free at aistudio.google.com/apikey");
+  if (!groqKey) {
+    showError("A Groq API key is required — get one free at console.groq.com/keys");
     return;
   }
 
@@ -242,7 +241,6 @@ els.enableBtn.addEventListener("click", async () => {
   els.transcript.textContent = "";
   els.reply.textContent = 'Say "Hi Jarvis" or tap the orb to begin.';
 
-  // Request mic permission early
   try {
     micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     setupRecorder();
@@ -260,7 +258,7 @@ els.settingsLink.addEventListener("click", () => {
 });
 
 // ============================================
-// WAKE WORD + COMMAND FLOW (Robust)
+// WAKE WORD + COMMAND FLOW
 // ============================================
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -315,7 +313,6 @@ function startWakeListening() {
 
   wakeRec.onresult = (event) => {
     if (isListeningForCommand) return;
-
     const result = event.results[event.results.length - 1];
     const text = result[0].transcript.trim();
     const confidence = result[0].confidence || 0;
@@ -324,7 +321,6 @@ function startWakeListening() {
 
     if (result.isFinal && confidence > 0.3) {
       if (WAKE_PATTERNS.some(p => p.test(text))) {
-        // WAKE WORD DETECTED
         els.debug.textContent = "WAKE WORD DETECTED";
         try { wakeRec.stop(); } catch (_) {}
         wakeRec = null;
@@ -341,18 +337,13 @@ function startWakeListening() {
       wakeRec = null;
       return;
     }
-    // Non-fatal: restart
     wakeRec = null;
-    if (wakeActive) {
-      setTimeout(startWakeListening, 400);
-    }
+    if (wakeActive) setTimeout(startWakeListening, 400);
   };
 
   wakeRec.onend = () => {
     wakeRec = null;
-    if (wakeActive && !isListeningForCommand) {
-      setTimeout(startWakeListening, 200);
-    }
+    if (wakeActive && !isListeningForCommand) setTimeout(startWakeListening, 200);
   };
 
   try {
@@ -363,23 +354,18 @@ function startWakeListening() {
   }
 }
 
-// Step 1: Acknowledge then listen for command
 async function acknowledgeAndListen() {
   isListeningForCommand = true;
   setState("speaking");
   els.transcript.textContent = "";
   els.reply.textContent = "";
-
   els.reply.textContent = "Good day, sir.";
-
   await speakText("Good day sir");
   startCommandListening();
 }
 
-// Step 2: Listen for command
 function startCommandListening() {
   if (!SpeechRecognition) return;
-
   setState("listening");
   els.debug.textContent = "Listening for command...";
 
@@ -403,7 +389,6 @@ function startCommandListening() {
     commandText = result[0].transcript.trim();
     els.transcript.textContent = commandText;
     els.debug.textContent = 'Command: "' + commandText + '"' + (result.isFinal ? " ✓" : " ...");
-
     if (result.isFinal) {
       finalReceived = true;
       clearTimeout(timeoutId);
@@ -424,7 +409,6 @@ function startCommandListening() {
     clearTimeout(timeoutId);
     commandRec = null;
     isListeningForCommand = false;
-
     if (commandText.trim()) {
       handleAudioOrText({ text: commandText.trim() });
     } else {
@@ -445,7 +429,7 @@ function startCommandListening() {
   }
 }
 
-// ---------- Audio Recording (orb tap) ----------
+// ---------- Audio Recording ----------
 function setupRecorder() {
   try {
     if (!micStream) throw new Error("No mic stream");
@@ -465,6 +449,14 @@ function blobToBase64(blob) {
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
+}
+
+function base64ToBlob(base64, mimeType) {
+  const byteCharacters = atob(base64);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
+  const byteArray = new Uint8Array(byteNumbers);
+  return new Blob([byteArray], { type: mimeType });
 }
 
 async function toggleRecording() {
@@ -494,7 +486,6 @@ async function toggleRecording() {
 
 els.orbTouch.addEventListener("click", toggleRecording);
 
-// Fallback: type instead of talk
 els.ptt.addEventListener("click", () => {
   const typed = prompt("Type your message to JARVIS:");
   if (typed && typed.trim()) handleAudioOrText({ text: typed.trim() });
@@ -530,45 +521,83 @@ async function handleTimeQuery() {
   startWakeListening();
 }
 
-// ---------- Brain: Gemini ----------
+// ---------- Brain: Groq ----------
 async function handleAudioOrText(input) {
   els.infoCard.classList.add("hidden");
+  let userText = input.text || "";
 
-  if (input.text && TIME_PATTERNS.some(p => p.test(input.text))) {
-    els.transcript.textContent = input.text;
+  if (input.audioBase64) {
+    setState("thinking");
+    els.debug.textContent = "Transcribing audio...";
+    try {
+      const blob = base64ToBlob(input.audioBase64, input.mimeType);
+      const formData = new FormData();
+      formData.append("file", blob, "audio.webm");
+      formData.append("model", "whisper-large-v3");
+
+      const transcribeRes = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + groqKey },
+        body: formData,
+      });
+
+      if (!transcribeRes.ok) {
+        const errText = await transcribeRes.text();
+        throw new Error("Transcription error " + transcribeRes.status + ": " + errText.slice(0, 150));
+      }
+
+      const transcribeData = await transcribeRes.json();
+      userText = transcribeData.text || "";
+      els.transcript.textContent = userText;
+      els.debug.textContent = "Transcribed: \"" + userText + "\"";
+    } catch (err) {
+      console.error(err);
+      els.reply.textContent = "JARVIS transcription error: " + err.message;
+      setState("offline");
+      setTimeout(() => setState("idle"), 3000);
+      startWakeListening();
+      return;
+    }
+  }
+
+  if (userText && TIME_PATTERNS.some(p => p.test(userText))) {
+    els.transcript.textContent = userText;
     return handleTimeQuery();
   }
 
   setState("thinking");
-
-  const userParts = input.audioBase64
-    ? [{ inline_data: { mime_type: input.mimeType, data: input.audioBase64 } }]
-    : [{ text: input.text }];
-
-  history.push({ role: "user", parts: userParts });
-  if (input.text) els.transcript.textContent = input.text;
+  history.push({ role: "user", content: userText });
+  if (userText) els.transcript.textContent = userText;
 
   try {
-    const url = "https://generativelanguage.googleapis.com/v1beta/models/" + GEMINI_MODEL + ":generateContent";
-    const res = await fetch(url, {
+    const messages = [{ role: "system", content: SYSTEM_INSTRUCTION }, ...history];
+
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": geminiKey },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + groqKey,
+      },
       body: JSON.stringify({
-        contents: history,
-        systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+        model: GROQ_MODEL,
+        messages: messages,
+        max_tokens: 512,
+        temperature: 0.7,
       }),
     });
 
     if (!res.ok) {
       const errText = await res.text();
-      throw new Error("Gemini error " + res.status + ": " + errText.slice(0, 150));
+      throw new Error("Groq error " + res.status + ": " + errText.slice(0, 150));
     }
 
     const data = await res.json();
-    const replyText = data?.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("") || "";
-    if (!replyText) throw new Error("Gemini returned an empty response.");
+    const replyText = data?.choices?.[0]?.message?.content || "";
+    if (!replyText) throw new Error("Groq returned an empty response.");
 
-    history.push({ role: "model", parts: [{ text: replyText }] });
+    history.push({ role: "assistant", content: replyText });
+    if (history.length > 20) history = history.slice(-20);
+
     els.reply.textContent = replyText;
     await speakText(replyText);
   } catch (err) {
