@@ -1,1 +1,135 @@
-/* startup css */
+/* ============================================
+   JARVIS STARTUP BOOT SEQUENCE
+   Plays once per calendar day (see startup.js).
+   Self-contained: injects/removes itself, never
+   touches index.html markup.
+   ============================================ */
+
+#startupOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: #020408;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  opacity: 1;
+  transition: opacity 0.6s ease;
+}
+
+#startupOverlay.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.boot-rings {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.boot-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1.5px solid #00A8FF;
+  opacity: 0;
+  transform: scale(0.3);
+}
+
+.boot-ring.r1 { inset: 40px; animation: bootRingIn 0.7s ease-out 0.15s forwards; }
+.boot-ring.r2 { inset: 20px; border-color: #4DDFFF; animation: bootRingIn 0.7s ease-out 0.35s forwards; }
+.boot-ring.r3 { inset: 0;    border-style: dashed; opacity: 0.5; animation: bootRingIn 0.7s ease-out 0.55s forwards, bootSpin 6s linear 1.25s infinite; }
+
+@keyframes bootRingIn {
+  from { opacity: 0; transform: scale(0.3); }
+  to   { opacity: 0.8; transform: scale(1); }
+}
+@keyframes bootSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.boot-core {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #00A8FF;
+  box-shadow: 0 0 12px 4px rgba(0,168,255,0.6);
+  animation: bootCorePulse 1.4s ease-in-out 0.9s infinite;
+}
+
+@keyframes bootCorePulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 12px 4px rgba(0,168,255,0.5); }
+  50%      { transform: scale(1.4); box-shadow: 0 0 26px 10px rgba(0,168,255,0.85); }
+}
+
+.boot-sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0deg, rgba(77,223,255,0.5) 25deg, transparent 55deg);
+  opacity: 0;
+  animation: bootSweepIn 0.4s ease 0.6s forwards, bootSpin 1.8s linear 1s infinite;
+}
+@keyframes bootSweepIn { to { opacity: 1; } }
+
+.boot-flash {
+  position: absolute;
+  inset: -60px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #bfffff 0%, rgba(0,168,255,0.4) 40%, transparent 70%);
+  opacity: 0;
+}
+.boot-flash.flash-active {
+  animation: bootFlash 0.5s ease-out forwards;
+}
+@keyframes bootFlash {
+  0%   { opacity: 0; transform: scale(0.5); }
+  40%  { opacity: 1; transform: scale(1.3); }
+  100% { opacity: 0; transform: scale(2.2); }
+}
+
+.boot-log {
+  width: 280px;
+  min-height: 132px;
+  font-family: "Share Tech Mono", monospace;
+  font-size: 0.78rem;
+  color: #4DDFFF;
+  letter-spacing: 0.5px;
+  line-height: 1.9;
+}
+
+.boot-log-line {
+  opacity: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  display: block;
+}
+.boot-log-line.show {
+  opacity: 1;
+  animation: bootLineIn 0.3s ease forwards;
+}
+@keyframes bootLineIn {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.boot-log-line .ok {
+  color: #00E676;
+  float: right;
+}
+
+.boot-skip {
+  position: absolute;
+  bottom: 36px;
+  color: #2a4a5c;
+  font-size: 0.68rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+}
